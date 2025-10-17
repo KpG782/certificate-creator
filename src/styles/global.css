@@ -1,0 +1,21 @@
+/* src/styles/global.css */
+@import "tailwindcss";
+
+@import url("https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Source+Sans+3:wght@300;400;600;700&display=swap");
+
+:root {
+  --ui-font: "Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial;
+  --serif: "Merriweather", serif;
+}
+
+html,
+body {
+  font-family: var(--ui-font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-merriweather {
+  font-family: var(--serif);
+}
