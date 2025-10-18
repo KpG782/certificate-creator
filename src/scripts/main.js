@@ -487,11 +487,66 @@ function setupBatchMode() {
       batchGenerateBtn.disabled = false;
     }
   });
-
-
 }
 
 function setupStudentManagement() {
+  // Add this inside setupStudentManagement()
+
+  // Bulk send button
+  const bulkSendBtn = document.getElementById("bulk-send-btn");
+  bulkSendBtn?.addEventListener("click", async () => {
+    const checkboxes = document.querySelectorAll(".student-checkbox:checked");
+
+    if (checkboxes.length === 0) {
+      alert("Please select at least one student");
+      return;
+    }
+
+    if (!confirm(`Send certificates to ${checkboxes.length} student(s)?`)) {
+      return;
+    }
+
+    bulkSendBtn.disabled = true;
+    bulkSendBtn.innerHTML =
+      '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Sending...';
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const checkbox of checkboxes) {
+      try {
+        const student = JSON.parse(checkbox.dataset.student);
+        await sendCertificateToStudent(student, null);
+        successCount++;
+
+        // Update checkbox row to show success
+        const row = checkbox.closest("tr");
+        if (row) {
+          row.classList.add("bg-green-50");
+        }
+
+        // Small delay between sends
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      } catch (error) {
+        console.error("Failed to send to student:", error);
+        failCount++;
+      }
+    }
+
+    alert(`Completed!\n✅ Sent: ${successCount}\n❌ Failed: ${failCount}`);
+
+    bulkSendBtn.innerHTML =
+      '<i data-lucide="send" class="w-4 h-4"></i> Send Certificates';
+    bulkSendBtn.disabled = false;
+
+    if (typeof lucide !== "undefined") {
+      lucide.createIcons();
+    }
+
+    // Reload student list
+    window.loadStudents();
+  });
+
   let allStudents = [];
   let selectedStudents = new Set();
 
@@ -697,6 +752,8 @@ function setupStudentManagement() {
   });
 }
 
+// Around line 750-800
+
 async function sendCertificateToStudent(student, buttonElement) {
   let originalHTML = "";
   if (buttonElement) {
@@ -721,12 +778,9 @@ async function sendCertificateToStudent(student, buttonElement) {
       singleContent.classList.remove("hidden");
     }
 
-    // ⚡ Update preview synchronously (no await)
     updateCertificatePreview(student);
 
-    // ⚡ Load signatures in parallel
     const signaturePromises = [];
-
     const deanPreview = document.getElementById("dean-signature-preview");
     const organizerPreview = document.getElementById(
       "organizer-signature-preview"
@@ -764,19 +818,19 @@ async function sendCertificateToStudent(student, buttonElement) {
       );
     }
 
-    // ⚡ Wait for all signatures to load (parallel)
     await Promise.all(signaturePromises);
 
-    // ⚡ Reduced delay from 300ms to 100ms
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    // ⚡ REDUCED delay from 100ms to 50ms
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
-    // ⚡ Generate image with optimized settings
+    // ⚡ OPTIMIZED image generation settings
     const dataUrl = await htmlToImage.toPng(card, {
-      pixelRatio: 1.5, // ⚡ Reduced from 2 to 1.5 (30% faster)
-      cacheBust: true,
+      pixelRatio: 1.2, // ⚡ REDUCED from 1.5 to 1.2 (faster, still good quality for email)
+      cacheBust: false, // ⚡ CHANGED to false (faster)
       backgroundColor: "#ffffff",
-      skipFonts: false, // Ensure fonts are loaded
-      quality: 0.9, // ⚡ Slightly reduced quality for speed
+      skipFonts: false,
+      quality: 0.85, // ⚡ REDUCED from 0.9 to 0.85 (smaller file size)
+      skipAutoScale: true, // ⚡ NEW: Skip automatic scaling
     });
 
     if (wasHidden) {
@@ -785,80 +839,85 @@ async function sendCertificateToStudent(student, buttonElement) {
       singleContent.style.left = "";
     }
 
-    // ⚡ Compress base64 data (remove data URL prefix for smaller payload)
     const base64Data = dataUrl.split(",")[1];
 
     const payload = {
       participantName: student.name,
-      participantEmail: student.email,
+      participantEmail: student.email.toLowerCase().trim(),
       category: student.category || "Student",
       seminarTitle: student.seminarTitle,
       eventDate: student.eventDate || "",
       location: student.location || "",
       organizerName: student.organizerName || "",
       deanName: student.deanName || "",
-      certificateBase64: base64Data, // ⚡ Send without "data:image/png;base64," prefix
+      certificateBase64: base64Data,
     };
 
-    console.log(`⚡ Sending certificate to ${student.email}...`);
+    console.log(`⚡ Sending certificate to ${payload.participantEmail}...`);
     const startTime = performance.now();
 
-    // ⚡ Add timeout to prevent hanging
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+    const APPS_SCRIPT_URL =
+      "https://script.google.com/macros/s/AKfycbxpa_M3fnlh9hNM-3Sw7DsWYBSLrU6UA0JgDxXnT_ms7iUyjZEsbpTj6fhRDCxtPl17oA/exec";
 
-    const response = await fetch(
-      "https://n8n.kenbuilds.tech/webhook/certificate-email",
-      {
+    // ⚡ Run in parallel with Promise.all (not Promise.allSettled for speed)
+    const [emailResponse, sheetResponse] = await Promise.all([
+      fetch("https://n8n.kenbuilds.tech/webhook/certificate-email", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-        signal: controller.signal,
-      }
-    );
+        signal: AbortSignal.timeout(12000), // ⚡ REDUCED from 15s to 12s
+      }).catch((err) => ({ ok: false, error: err })),
 
-    clearTimeout(timeoutId);
+      fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: payload.participantEmail }),
+        signal: AbortSignal.timeout(8000), // ⚡ REDUCED from 10s to 8s
+      }).catch((err) => ({ ok: false, error: err })),
+    ]);
+
     const endTime = performance.now();
-    console.log(
-      `⏱️ Request took ${((endTime - startTime) / 1000).toFixed(2)}s`
-    );
+    console.log(`⏱️ Total time: ${((endTime - startTime) / 1000).toFixed(2)}s`);
 
-    // ⚡ Handle empty response gracefully
-    const responseText = await response.text();
-
-    if (!response.ok) {
+    // Check email send result
+    if (!emailResponse.ok) {
       throw new Error(
-        `Failed to send certificate! Status: ${response.status}, Response: ${responseText}`
+        `Failed to send email: ${emailResponse.error || emailResponse.status}`
       );
     }
 
-    // ⚡ Parse JSON or accept empty response
-    let result = { success: true };
-    if (responseText && responseText.trim().length > 0) {
-      try {
-        result = JSON.parse(responseText);
-      } catch (e) {
-        console.warn("⚠️ Non-JSON response (but status is OK):", responseText);
-      }
-    }
+    console.log(`✅ Certificate sent to ${payload.participantEmail}`);
 
-    console.log(`✓ Certificate sent to ${student.email}`);
+    // Check sheet update result (non-blocking warning)
+    if (!sheetResponse.ok) {
+      console.warn(
+        "⚠️ Sheet update failed (but email was sent):",
+        sheetResponse.error
+      );
+    } else {
+      console.log("✅ Status updated in Google Sheets");
+    }
 
     if (buttonElement) {
       buttonElement.innerHTML =
         '<i data-lucide="check" class="w-3 h-3"></i> Sent!';
-      buttonElement.classList.remove("bg-blue-600", "hover:bg-blue-700");
+      buttonElement.classList.remove(
+        "bg-blue-600",
+        "hover:bg-blue-700",
+        "bg-orange-600",
+        "hover:bg-orange-700",
+        "bg-gray-600",
+        "hover:bg-gray-700"
+      );
       buttonElement.classList.add("bg-green-600");
 
-      // ⚡ Reload after shorter delay
       setTimeout(() => {
+        console.log("🔄 Reloading student list...");
         window.loadStudents();
-      }, 1500); // Reduced from 2000ms
+      }, 1000); // ⚡ REDUCED from 1500ms to 1000ms
     }
   } catch (error) {
-    console.error(`❌ Error sending certificate:`, error);
+    console.error(`❌ Error:`, error);
 
     if (buttonElement) {
       buttonElement.innerHTML =
