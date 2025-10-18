@@ -1,6 +1,8 @@
 ---
+// filepath: src/components/Welcome.astro
 import SingleMode from './SingleMode.astro';
 import BatchPanel from './BatchPanel.astro';
+import StudentManagement from './StudentManagement.astro';
 ---
 
 <!DOCTYPE html>
@@ -12,6 +14,8 @@ import BatchPanel from './BatchPanel.astro';
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- ✅ ADD LUCIDE ICONS -->
+  <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Source+Sans+3:wght@300;400;600;700&display=swap');
     body { font-family: 'Source Sans 3', sans-serif; }
@@ -33,12 +37,24 @@ import BatchPanel from './BatchPanel.astro';
       <button id="batch-mode-tab" class="px-8 py-4 rounded-xl font-semibold text-lg transition-all bg-white text-gray-700 shadow">
         📦 Batch Mode
       </button>
+      <button id="student-management-tab" class="px-8 py-4 rounded-xl font-semibold text-lg transition-all bg-white text-gray-700 shadow">
+        🎓 Student Management
+      </button>
     </div>
 
     <SingleMode />
     <BatchPanel />
+    <StudentManagement />
   </div>
 
-  <script src="/src/scripts/main.js"></script>
+  <script type="module" src="/src/scripts/main.js"></script>
+  <script>
+    // Initialize Lucide icons after DOM loads
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    });
+  </script>
 </body>
-</html>s
+</html>
