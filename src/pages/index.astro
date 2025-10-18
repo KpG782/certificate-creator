@@ -1,11 +1,265 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+// filepath: src/pages/index.astro
+import dashboard from "./dashboard.astro";	
+import "../styles/global.css";
 ---
 
-<Layout>
-	<Welcome />
-</Layout>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - Certificate Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700&display=swap');
+    body { font-family: 'Source Sans 3', sans-serif; }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-md">
+    <!-- Login Card -->
+    <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-8 text-center">
+        <div class="w-20 h-20 bg-white rounded-full mx-auto mb-4 flex items-center justify-center">
+          <i data-lucide="graduation-cap" class="w-10 h-10 text-blue-600"></i>
+        </div>
+        <h1 class="text-3xl font-bold text-white mb-2">Certificate Generator</h1>
+        <p class="text-blue-100">University of Makati</p>
+      </div>
+
+      <!-- Login Form -->
+      <div class="p-8">
+        <form id="login-form" class="space-y-6">
+          <!-- Email Field -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+              <i data-lucide="mail" class="w-4 h-4 inline mr-1"></i>
+              Email Address
+            </label>
+            <div class="relative">
+              <input
+                type="email"
+                id="email"
+                required
+                autocomplete="email"
+                placeholder="admin@umak.edu.ph"
+                class="w-full px-4 py-3 pl-11 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              />
+              <i data-lucide="user" class="w-5 h-5 absolute left-3 top-3.5 text-gray-400"></i>
+            </div>
+          </div>
+
+          <!-- Password Field -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+              <i data-lucide="lock" class="w-4 h-4 inline mr-1"></i>
+              Password
+            </label>
+            <div class="relative">
+              <input
+                type="password"
+                id="password"
+                required
+                autocomplete="current-password"
+                placeholder="Enter your password"
+                class="w-full px-4 py-3 pl-11 pr-11 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              />
+              <i data-lucide="lock" class="w-5 h-5 absolute left-3 top-3.5 text-gray-400"></i>
+              <button
+                type="button"
+                id="toggle-password"
+                class="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+              >
+                <i data-lucide="eye" class="w-5 h-5"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Error Message -->
+          <div id="error-message" class="hidden bg-red-50 border-l-4 border-red-500 p-4 rounded">
+            <div class="flex items-center">
+              <i data-lucide="alert-circle" class="w-5 h-5 text-red-500 mr-2"></i>
+              <p class="text-sm text-red-700" id="error-text"></p>
+            </div>
+          </div>
+
+          <!-- Login Button -->
+          <button
+            type="submit"
+            id="login-btn"
+            class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all transform hover:scale-[1.02] shadow-lg flex items-center justify-center gap-2"
+          >
+            <i data-lucide="log-in" class="w-5 h-5"></i>
+            Sign In
+          </button>
+        </form>
+
+        <!-- Footer -->
+        <div class="mt-6 text-center text-sm text-gray-500">
+          <p class="flex items-center justify-center gap-1">
+            <i data-lucide="shield-check" class="w-4 h-4"></i>
+            Secured with encryption
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info Card -->
+    <div class="mt-6 bg-white/10 backdrop-blur-sm rounded-xl p-6 text-white">
+      <h3 class="font-semibold mb-2 flex items-center gap-2">
+        <i data-lucide="info" class="w-5 h-5"></i>
+        Demo Credentials
+      </h3>
+      <div class="space-y-1 text-sm text-blue-100">
+        <p>📧 Email: <span class="font-mono bg-white/20 px-2 py-0.5 rounded">admin@umak.edu.ph</span></p>
+        <p>🔑 Password: <span class="font-mono bg-white/20 px-2 py-0.5 rounded">UMak2024!</span></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Initialize Lucide icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+
+    // ✅ HARDCODED CREDENTIALS (Client-Side Only - For Development)
+    const VALID_EMAIL = 'admin@umak.edu.ph';
+    const VALID_PASSWORD = 'UMak2024!';
+
+    // Toggle password visibility
+    const togglePassword = document.getElementById('toggle-password');
+    const passwordInput = document.getElementById('password') as HTMLInputElement | null;
+
+    togglePassword?.addEventListener('click', () => {
+      if (!passwordInput) return;
+      
+      const type = passwordInput.type === 'password' ? 'text' : 'password';
+      passwordInput.type = type;
+      
+      const icon = togglePassword.querySelector('i');
+      if (icon) {
+        icon.setAttribute('data-lucide', type === 'password' ? 'eye' : 'eye-off');
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
+        }
+      }
+    });
+
+    // Login form submission
+    const loginForm = document.getElementById('login-form') as HTMLFormElement | null;
+    const loginBtn = document.getElementById('login-btn') as HTMLButtonElement | null;
+    const errorMessage = document.getElementById('error-message') as HTMLDivElement | null;
+    const errorText = document.getElementById('error-text') as HTMLParagraphElement | null;
+
+    function showError(message: string): void {
+      if (!errorText || !errorMessage) return;
+      errorText.textContent = message;
+      errorMessage.classList.remove('hidden');
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    }
+
+    function hideError(): void {
+      if (!errorMessage) return;
+      errorMessage.classList.add('hidden');
+    }
+
+    loginForm?.addEventListener('submit', async (e: Event) => {
+      e.preventDefault();
+      hideError();
+
+      const emailInput = document.getElementById('email') as HTMLInputElement | null;
+      const passwordInputForm = document.getElementById('password') as HTMLInputElement | null;
+
+      if (!emailInput || !passwordInputForm || !loginBtn) return;
+
+      const email = emailInput.value;
+      const password = passwordInputForm.value;
+
+      // Disable button
+      loginBtn.disabled = true;
+      loginBtn.innerHTML = '<i data-lucide="loader" class="w-5 h-5 animate-spin"></i> Signing in...';
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+
+      // ✅ Simulate API delay (200ms)
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // ✅ Check credentials locally
+      if (email === VALID_EMAIL && password === VALID_PASSWORD) {
+        // Store session info
+        const sessionData = {
+          email: email,
+          name: 'Administrator',
+          loginTime: new Date().toISOString(),
+          sessionId: Math.random().toString(36).substring(7)
+        };
+        
+        localStorage.setItem('auth_session', JSON.stringify(sessionData));
+        localStorage.setItem('user', JSON.stringify({
+          email: email,
+          name: 'Administrator'
+        }));
+
+        // Show success message
+        if (loginBtn) {
+          loginBtn.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5"></i> Success!';
+          loginBtn.classList.remove('from-blue-600', 'to-indigo-600');
+          loginBtn.classList.add('from-green-600', 'to-green-700');
+          if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+          }
+        }
+
+        // Redirect to dashboard
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 500);
+      } else {
+        // Invalid credentials
+        showError('Invalid email or password. Please try again.');
+        
+        // Reset button
+        if (loginBtn) {
+          loginBtn.disabled = false;
+          loginBtn.innerHTML = '<i data-lucide="log-in" class="w-5 h-5"></i> Sign In';
+          if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+          }
+        }
+      }
+    });
+
+    // Check if already logged in
+    window.addEventListener('DOMContentLoaded', () => {
+      const session = localStorage.getItem('auth_session');
+      if (session) {
+        try {
+          const sessionData = JSON.parse(session);
+          // Check if session is less than 24 hours old
+          const loginTime = new Date(sessionData.loginTime);
+          const now = new Date();
+          const hoursSinceLogin = (now.getTime() - loginTime.getTime()) / (1000 * 60 * 60);
+          
+          if (hoursSinceLogin < 24) {
+            window.location.href = '/dashboard';
+          } else {
+            // Session expired
+            localStorage.removeItem('auth_session');
+            localStorage.removeItem('user');
+          }
+        } catch (e) {
+          console.log('Invalid session');
+        }
+      }
+    });
+  </script>
+</body>
+</html>
