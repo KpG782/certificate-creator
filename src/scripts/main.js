@@ -752,7 +752,9 @@ function setupStudentManagement() {
   });
 }
 
-// Around line 750-800
+// ⚡ Pre-cache signature images (add at top of file, after variable declarations)
+let cachedDeanImage = null;
+let cachedOrganizerImage = null;
 
 async function sendCertificateToStudent(student, buttonElement) {
   let originalHTML = "";
@@ -778,60 +780,67 @@ async function sendCertificateToStudent(student, buttonElement) {
       singleContent.classList.remove("hidden");
     }
 
+    // Update certificate preview with student data
     updateCertificatePreview(student);
 
-    const signaturePromises = [];
     const deanPreview = document.getElementById("dean-signature-preview");
     const organizerPreview = document.getElementById(
       "organizer-signature-preview"
     );
 
+    // ⚡ Use cached signature images for speed
     if (batchDeanSignatureData && deanPreview) {
-      signaturePromises.push(
-        new Promise((resolve) => {
-          const img = new Image();
-          img.src = batchDeanSignatureData;
-          img.className = "h-16 object-contain";
-          img.onload = () => {
-            deanPreview.innerHTML = "";
-            deanPreview.appendChild(img);
-            resolve();
-          };
-          img.onerror = () => resolve();
-        })
-      );
+      if (!cachedDeanImage) {
+        cachedDeanImage = new Image();
+        cachedDeanImage.src = batchDeanSignatureData;
+        cachedDeanImage.className = "h-16 object-contain";
+        await new Promise((resolve) => {
+          cachedDeanImage.onload = resolve;
+          cachedDeanImage.onerror = resolve;
+        });
+      }
+      deanPreview.innerHTML = "";
+      deanPreview.appendChild(cachedDeanImage.cloneNode(true));
     }
 
     if (batchOrganizerSignatureData && organizerPreview) {
-      signaturePromises.push(
-        new Promise((resolve) => {
-          const img = new Image();
-          img.src = batchOrganizerSignatureData;
-          img.className = "h-16 object-contain";
-          img.onload = () => {
-            organizerPreview.innerHTML = "";
-            organizerPreview.appendChild(img);
-            resolve();
-          };
-          img.onerror = () => resolve();
-        })
-      );
+      if (!cachedOrganizerImage) {
+        cachedOrganizerImage = new Image();
+        cachedOrganizerImage.src = batchOrganizerSignatureData;
+        cachedOrganizerImage.className = "h-16 object-contain";
+        await new Promise((resolve) => {
+          cachedOrganizerImage.onload = resolve;
+          cachedOrganizerImage.onerror = resolve;
+        });
+      }
+      organizerPreview.innerHTML = "";
+      organizerPreview.appendChild(cachedOrganizerImage.cloneNode(true));
     }
 
-    await Promise.all(signaturePromises);
-
-    // ⚡ REDUCED delay from 100ms to 50ms
+    // ⚡ Small delay for DOM to settle (reduced from 100ms)
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    // ⚡ OPTIMIZED image generation settings
-    const dataUrl = await htmlToImage.toPng(card, {
-      pixelRatio: 1.2, // ⚡ REDUCED from 1.5 to 1.2 (faster, still good quality for email)
-      cacheBust: false, // ⚡ CHANGED to false (faster)
+    console.log("📸 Generating certificate image...");
+    const imageStartTime = performance.now();
+
+    // ✅ OPTIMIZED: High quality for email, but compressed
+    const dataUrl = await htmlToImage.toJpeg(card, {
+      // ✅ JPEG instead of PNG (50% smaller, same visual quality)
+      pixelRatio: 1.5, // ✅ Good quality: 1683x1191px @ 96 DPI
+      cacheBust: false, // ✅ Faster rendering
       backgroundColor: "#ffffff",
-      skipFonts: false,
-      quality: 0.85, // ⚡ REDUCED from 0.9 to 0.85 (smaller file size)
-      skipAutoScale: true, // ⚡ NEW: Skip automatic scaling
+      skipFonts: false, // ✅ Ensure fonts render properly
+      quality: 0.92, // ✅ High JPEG quality (0.92 is sweet spot)
+      canvasWidth: 1122, // ✅ Explicit dimensions
+      canvasHeight: 794,
     });
+
+    const imageEndTime = performance.now();
+    console.log(
+      `📸 Image generated in ${((imageEndTime - imageStartTime) / 1000).toFixed(
+        2
+      )}s`
+    );
 
     if (wasHidden) {
       singleContent.classList.add("hidden");
@@ -839,7 +848,12 @@ async function sendCertificateToStudent(student, buttonElement) {
       singleContent.style.left = "";
     }
 
+    // Extract base64 data
     const base64Data = dataUrl.split(",")[1];
+
+    // ✅ Log file size for debugging
+    const fileSizeKB = Math.round((base64Data.length * 3) / 4 / 1024);
+    console.log(`📦 Certificate size: ${fileSizeKB} KB`);
 
     const payload = {
       participantName: student.name,
@@ -853,31 +867,49 @@ async function sendCertificateToStudent(student, buttonElement) {
       certificateBase64: base64Data,
     };
 
-    console.log(`⚡ Sending certificate to ${payload.participantEmail}...`);
-    const startTime = performance.now();
+    console.log(`📧 Sending email to ${payload.participantEmail}...`);
+    const emailStartTime = performance.now();
 
     const APPS_SCRIPT_URL =
-      "https://script.google.com/macros/s/AKfycbxpa_M3fnlh9hNM-3Sw7DsWYBSLrU6UA0JgDxXnT_ms7iUyjZEsbpTj6fhRDCxtPl17oA/exec";
+      "https://script.google.com/macros/s/AKfycbzkcDReypApdx_Ls245VGE57VK5binTa8cJhHB2w0HiJCDndX1JuTSBAPmgK8slgTRdag/exec";
 
-    // ⚡ Run in parallel with Promise.all (not Promise.allSettled for speed)
+    // ⚡ Run email send and sheet update in parallel
     const [emailResponse, sheetResponse] = await Promise.all([
+      // Send certificate email
       fetch("https://n8n.kenbuilds.tech/webhook/certificate-email", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(12000), // ⚡ REDUCED from 15s to 12s
-      }).catch((err) => ({ ok: false, error: err })),
+        signal: AbortSignal.timeout(15000), // 15 second timeout
+      }).catch((err) => {
+        console.error("❌ Email send error:", err);
+        return { ok: false, error: err };
+      }),
 
+      // Update Google Sheets status
       fetch(APPS_SCRIPT_URL, {
         method: "POST",
+        mode: "no-cors", // ✅ Bypass CORS for Apps Script
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: payload.participantEmail }),
-        signal: AbortSignal.timeout(8000), // ⚡ REDUCED from 10s to 8s
-      }).catch((err) => ({ ok: false, error: err })),
+        signal: AbortSignal.timeout(8000),
+      })
+        .then(() => ({ ok: true }))
+        .catch((err) => {
+          console.warn("⚠️ Sheet update error:", err);
+          return { ok: false, error: err };
+        }),
     ]);
 
-    const endTime = performance.now();
-    console.log(`⏱️ Total time: ${((endTime - startTime) / 1000).toFixed(2)}s`);
+    const emailEndTime = performance.now();
+    const emailTime = ((emailEndTime - emailStartTime) / 1000).toFixed(2);
+    const totalTime = ((emailEndTime - imageStartTime) / 1000).toFixed(2);
+
+    console.log(`📧 Email sent in ${emailTime}s`);
+    console.log(`⏱️ Total time: ${totalTime}s`);
 
     // Check email send result
     if (!emailResponse.ok) {
@@ -888,14 +920,11 @@ async function sendCertificateToStudent(student, buttonElement) {
 
     console.log(`✅ Certificate sent to ${payload.participantEmail}`);
 
-    // Check sheet update result (non-blocking warning)
-    if (!sheetResponse.ok) {
-      console.warn(
-        "⚠️ Sheet update failed (but email was sent):",
-        sheetResponse.error
-      );
+    // Sheet update is non-blocking (we already sent the request)
+    if (sheetResponse.ok) {
+      console.log("✅ Status update request sent to Google Sheets");
     } else {
-      console.log("✅ Status updated in Google Sheets");
+      console.warn("⚠️ Sheet update may have failed (but email was sent)");
     }
 
     if (buttonElement) {
@@ -911,13 +940,16 @@ async function sendCertificateToStudent(student, buttonElement) {
       );
       buttonElement.classList.add("bg-green-600");
 
+      // Reload student list to show updated status
       setTimeout(() => {
         console.log("🔄 Reloading student list...");
         window.loadStudents();
-      }, 1000); // ⚡ REDUCED from 1500ms to 1000ms
+      }, 1500);
     }
+
+    return { success: true };
   } catch (error) {
-    console.error(`❌ Error:`, error);
+    console.error(`❌ Error sending certificate:`, error);
 
     if (buttonElement) {
       buttonElement.innerHTML =
