@@ -1,14 +1,72 @@
 const SHEET_ID = "1YC7dMB5rn1pCJjqGRbXgom3xpQN6NRC5YlU7E0nzUT0";
-const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
 
+// ✅ Method 1: Use Published CSV URL (Most Reliable for deployed sites)
+const SHEET_CSV_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vTGfW1Fc4tyVzWUftXDPJ3RYiDuAwV_2xdunWFhIp0lIS6_ibAwEFXQXr320WKZSyi80FLyOLOjxzvl/pub?output=csv";
+
+// ✅ Method 2: Fallback to JSON API
+const SHEET_JSON_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out=json`;
+
+/**
+ * Fetch students from Google Sheets with multiple fallback methods
+ */
 export const fetchStudents = async () => {
   try {
-    const response = await fetch(SHEET_URL);
+    console.log("🔄 Fetching students from Google Sheets...");
+
+    // Try CSV method first (most reliable)
+    const students = await fetchFromCSV();
+
+    if (students.length > 0) {
+      console.log(`✅ Loaded ${students.length} students via CSV`);
+      return students;
+    }
+
+    // Fallback to JSON API
+    console.log("⚠️ CSV failed, trying JSON API...");
+    return await fetchFromJSON();
+  } catch (error) {
+    console.error("❌ Error fetching students:", error);
+    return [];
+  }
+};
+
+/**
+ * Method 1: Fetch via CSV (Most Reliable)
+ */
+async function fetchFromCSV() {
+  try {
+    const response = await fetch(SHEET_CSV_URL);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const csvText = await response.text();
+    return parseCSV(csvText);
+  } catch (error) {
+    console.error("❌ CSV fetch failed:", error);
+    return [];
+  }
+}
+
+/**
+ * Method 2: Fetch via JSON API (Fallback)
+ */
+async function fetchFromJSON() {
+  try {
+    const response = await fetch(SHEET_JSON_URL);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
     const text = await response.text();
 
+    // Remove Google's JSON wrapper
     const json = JSON.parse(text.substring(47).slice(0, -2));
-
     const rows = json.table.rows;
+
     const students = rows.map((row) => ({
       id: row.c[0]?.v || "",
       name: row.c[1]?.v || "",
@@ -26,11 +84,80 @@ export const fetchStudents = async () => {
 
     return students;
   } catch (error) {
-    console.error("Error fetching students:", error);
+    console.error("❌ JSON fetch failed:", error);
     return [];
   }
-};
+}
 
+/**
+ * Parse CSV text into student objects
+ */
+function parseCSV(csvText) {
+  const lines = csvText.split("\n");
+  const headers = lines[0].split(",").map((h) => h.trim().replace(/"/g, ""));
+
+  console.log("📋 CSV Headers:", headers);
+
+  const students = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    // Handle CSV with quoted values
+    const values = parseCSVLine(line);
+
+    if (values.length < 12) continue; // Skip incomplete rows
+
+    students.push({
+      id: values[0] || "",
+      name: values[1] || "",
+      email: values[2] || "",
+      section: values[3] || "",
+      category: values[4] || "",
+      seminarTitle: values[5] || "",
+      eventDate: values[6] || "",
+      location: values[7] || "",
+      deanName: values[8] || "",
+      organizerName: values[9] || "",
+      status: values[10] || "pending",
+      sentDate: values[11] || "",
+    });
+  }
+
+  return students;
+}
+
+/**
+ * Parse a single CSV line handling quoted values
+ */
+function parseCSVLine(line) {
+  const values = [];
+  let currentValue = "";
+  let insideQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+
+    if (char === '"') {
+      insideQuotes = !insideQuotes;
+    } else if (char === "," && !insideQuotes) {
+      values.push(currentValue.trim());
+      currentValue = "";
+    } else {
+      currentValue += char;
+    }
+  }
+
+  // Push the last value
+  values.push(currentValue.trim());
+
+  return values;
+}
+
+/**
+ * Filter students based on criteria
+ */
 export const filterStudents = (students, filters) => {
   return students.filter((student) => {
     // Email search filter
@@ -60,9 +187,15 @@ export const filterStudents = (students, filters) => {
   });
 };
 
+/**
+ * Display students in a table
+ */
 export const displayStudentsTable = (students, containerId) => {
   const container = document.getElementById(containerId);
-  if (!container) return;
+  if (!container) {
+    console.error("❌ Container not found:", containerId);
+    return;
+  }
 
   if (students.length === 0) {
     container.innerHTML =
@@ -175,4 +308,6 @@ export const displayStudentsTable = (students, containerId) => {
   if (typeof lucide !== "undefined") {
     lucide.createIcons();
   }
+
+  console.log(`✅ Displayed ${students.length} students`);
 };
