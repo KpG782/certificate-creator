@@ -1,48 +1,30 @@
+// src/pages/api/generate-token.ts
 import type { APIRoute } from "astro";
-import jwt from "jsonwebtoken";
-
-const JWT_SECRET =
-  import.meta.env.JWT_SECRET || "fallback-secret-change-in-production";
 
 export const POST: APIRoute = async ({ request }) => {
-  // Set CORS headers for development
   const headers = {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
   };
 
   try {
-    // Parse request body
-    let body;
-    try {
-      body = await request.json();
-    } catch (parseError) {
-      console.error("❌ JSON parse error:", parseError);
-      return new Response(
-        JSON.stringify({
-          error: "Invalid JSON in request body",
-        }),
-        { status: 400, headers }
-      );
-    }
+    // Dynamic import to avoid SSR issues
+    const jwt = await import("jsonwebtoken");
+    const JWT_SECRET =
+      import.meta.env.JWT_SECRET || "fallback-secret-change-in-production";
+
+    const body = await request.json();
+    console.log("📥 Received:", body);
 
     const { eventId, eventName, registrationEnd } = body;
 
-    // Validate required fields
     if (!eventId || !eventName || !registrationEnd) {
       return new Response(
-        JSON.stringify({
-          error: "Missing required fields",
-          required: ["eventId", "eventName", "registrationEnd"],
-          received: { eventId, eventName, registrationEnd },
-        }),
+        JSON.stringify({ error: "Missing required fields" }),
         { status: 400, headers }
       );
     }
 
-    // Calculate expiration time
     const expiresAt = new Date(registrationEnd);
     const now = new Date();
     const expiresInSeconds = Math.floor(
@@ -51,16 +33,11 @@ export const POST: APIRoute = async ({ request }) => {
 
     if (expiresInSeconds <= 0) {
       return new Response(
-        JSON.stringify({
-          error: "Registration end date must be in the future",
-          registrationEnd,
-          currentTime: now.toISOString(),
-        }),
+        JSON.stringify({ error: "Registration end must be in the future" }),
         { status: 400, headers }
       );
     }
 
-    // Generate JWT token
     const payload = {
       event_id: eventId,
       event_name: eventName,
@@ -68,20 +45,25 @@ export const POST: APIRoute = async ({ request }) => {
       iss: "umak-certificate-system",
     };
 
-    const token = jwt.sign(payload, JWT_SECRET, {
+    // Handle both CommonJS and ES module exports
+    const jwtSign = jwt.default?.sign || jwt.sign;
+
+    if (typeof jwtSign !== "function") {
+      throw new Error("JWT sign function not available");
+    }
+
+    const token = jwtSign(payload, JWT_SECRET, {
       expiresIn: expiresInSeconds,
     });
 
-    // Generate attendance URL
-    const baseUrl = import.meta.env.PUBLIC_SITE_URL || "http://localhost:4321";
+    const baseUrl =
+      import.meta.env.PUBLIC_SITE_URL ||
+      (import.meta.env.DEV
+        ? "http://localhost:4321"
+        : "https://certificate-creator-gules.vercel.app");
     const attendanceUrl = `${baseUrl}/event/attend?token=${token}`;
 
-    console.log("✅ JWT generated successfully:", {
-      eventId,
-      eventName,
-      expiresIn: `${Math.floor(expiresInSeconds / 3600)} hours`,
-      baseUrl,
-    });
+    console.log("✅ Token generated successfully");
 
     return new Response(
       JSON.stringify({
@@ -93,24 +75,17 @@ export const POST: APIRoute = async ({ request }) => {
       { status: 200, headers }
     );
   } catch (error) {
-    console.error("❌ Token generation failed:", error);
+    console.error("❌ Error:", error);
     return new Response(
       JSON.stringify({
-        error: "Failed to generate token",
-        details: error instanceof Error ? error.message : "Unknown error",
-        stack:
-          process.env.NODE_ENV === "development"
-            ? error instanceof Error
-              ? error.stack
-              : undefined
-            : undefined,
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : String(error),
       }),
       { status: 500, headers }
     );
   }
 };
 
-// Handle OPTIONS for CORS preflight
 export const OPTIONS: APIRoute = async () => {
   return new Response(null, {
     status: 204,

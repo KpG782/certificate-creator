@@ -1,4 +1,13 @@
-import QRCode from "qrcode";
+// ✅ NEW - Dynamic import
+let QRCode;
+
+// Load QRCode dynamically
+async function loadQRCode() {
+  if (!QRCode) {
+    QRCode = await import("qrcode");
+  }
+  return QRCode;
+}
 
 // ✅ Event Data Interface (using JSDoc for type hints)
 /**
@@ -117,11 +126,15 @@ async function generateJWT(eventId, eventName, registrationEnd) {
   }
 }
 
-// ✅ Generate QR Code using local package
+// Update generateQRCode function
 async function generateQRCode(canvas, url) {
   try {
     console.log("🎨 Generating QR code for:", url);
-    await QRCode.toCanvas(canvas, url, {
+
+    // Ensure QRCode is loaded
+    const QR = await loadQRCode();
+
+    await QR.toCanvas(canvas, url, {
       width: 400,
       margin: 2,
       color: {
