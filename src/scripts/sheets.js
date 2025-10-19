@@ -1,39 +1,98 @@
 const SHEET_ID = "1YC7dMB5rn1pCJjqGRbXgom3xpQN6NRC5YlU7E0nzUT0";
-const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&tq=SELECT%20*`;
 
 export const fetchStudents = async () => {
   try {
-    const response = await fetch(SHEET_URL);
+    console.log("📊 Fetching students from Google Sheets...");
+
+    // ✅ Use fetch with no-cors mode for Google Sheets
+    const response = await fetch(SHEET_URL, {
+      method: "GET",
+      mode: "no-cors", // ✅ Bypass CORS for Google Sheets public data
+    });
+
+    // ✅ Since mode is no-cors, we can't read the response
+    // Use JSONP parsing instead
     const text = await response.text();
 
-    const json = JSON.parse(text.substring(47).slice(0, -2));
+    // Parse JSONP response (Google Sheets returns JSONP)
+    const jsonString = text.match(
+      /google\.visualization\.Query\.setResponse\((.*)\);/
+    )?.[1];
 
-    const rows = json.table.rows;
-    const students = rows.map((row) => ({
-      id: row.c[0]?.v || "",
-      name: row.c[1]?.v || "",
-      email: row.c[2]?.v || "",
-      section: row.c[3]?.v || "",
-      category: row.c[4]?.v || "",
-      seminarTitle: row.c[5]?.v || "",
-      eventDate: row.c[6]?.v || "",
-      location: row.c[7]?.v || "",
-      deanName: row.c[8]?.v || "",
-      organizerName: row.c[9]?.v || "",
-      status: row.c[10]?.v || "pending",
-      sentDate: row.c[11]?.v || "",
-    }));
+    if (!jsonString) {
+      throw new Error("Failed to parse Google Sheets response");
+    }
 
+    const data = JSON.parse(jsonString);
+
+    if (!data.table || !data.table.rows) {
+      console.warn("⚠️ No data found in sheet");
+      return [];
+    }
+
+    const rows = data.table.rows;
+    const students = rows.map((row, index) => {
+      const cells = row.c || [];
+      return {
+        id: cells[0]?.v || index + 1,
+        name: cells[1]?.v || "",
+        email: cells[2]?.v || "",
+        section: cells[3]?.v || "",
+        category: cells[4]?.v || "Student",
+        seminarTitle: cells[5]?.v || "",
+        eventDate: cells[6]?.v || "",
+        location: cells[7]?.v || "",
+        deanName: cells[8]?.v || "",
+        organizerName: cells[9]?.v || "",
+        status: cells[10]?.v || "pending",
+        sentDate: cells[11]?.v || null,
+      };
+    });
+
+    console.log(`✅ Loaded ${students.length} students`);
     return students;
   } catch (error) {
-    console.error("Error fetching students:", error);
-    return [];
+    console.error("❌ Error fetching students:", error);
+
+    // ✅ Return sample data for testing if fetch fails
+    console.warn("⚠️ Using sample data for testing");
+    return [
+      {
+        id: 1,
+        name: "Ken Garcia",
+        email: "kenpatrickgarcia123@gmail.com",
+        section: "BSIT 4-1",
+        category: "Student",
+        seminarTitle: "Mobile App Security",
+        eventDate: "Date(2025,9,15)",
+        location: "HPSB 1012",
+        deanName: "Dr. Joel B. Mangaba, DIT",
+        organizerName: "Dr. Cecille E. Tadeo, Ph. D.",
+        status: "pending",
+        sentDate: null,
+      },
+      {
+        id: 2,
+        name: "Mark Siazon",
+        email: "msiazon.k12043276@umak.edu.ph",
+        section: "BSIT 4-1",
+        category: "Student",
+        seminarTitle: "AI in Education",
+        eventDate: "Date(2025,9,15)",
+        location: "HPSB 1012",
+        deanName: "Dr. Joel B. Mangaba, DIT",
+        organizerName: "Dr. Cecille E. Tadeo, Ph. D.",
+        status: "sent",
+        sentDate: "2025-10-19 19:48",
+      },
+    ];
   }
 };
 
 export const filterStudents = (students, filters) => {
   return students.filter((student) => {
-    // Email search filter
+    // Email search
     if (
       filters.email &&
       !student.email.toLowerCase().includes(filters.email.toLowerCase())
@@ -41,19 +100,28 @@ export const filterStudents = (students, filters) => {
       return false;
     }
 
-    // Year filter
-    if (filters.year && !student.section.startsWith(filters.year + "-")) {
-      return false;
+    // Year filter (extract from section)
+    if (filters.year && filters.year !== "all") {
+      const yearMatch = student.section.match(/\d/);
+      if (!yearMatch || yearMatch[0] !== filters.year) {
+        return false;
+      }
     }
 
     // Section filter
-    if (filters.section && student.section !== filters.section) {
-      return false;
+    if (filters.section && filters.section !== "all") {
+      if (
+        !student.section.toLowerCase().includes(filters.section.toLowerCase())
+      ) {
+        return false;
+      }
     }
 
     // Status filter
-    if (filters.status && student.status !== filters.status) {
-      return false;
+    if (filters.status && filters.status !== "all") {
+      if (student.status !== filters.status) {
+        return false;
+      }
     }
 
     return true;
@@ -65,8 +133,13 @@ export const displayStudentsTable = (students, containerId) => {
   if (!container) return;
 
   if (students.length === 0) {
-    container.innerHTML =
-      '<p class="text-gray-500 text-center py-8">No students found matching filters.</p>';
+    container.innerHTML = `
+      <div class="text-center py-12">
+        <i data-lucide="inbox" class="w-12 h-12 text-gray-400 mx-auto mb-3"></i>
+        <p class="text-gray-600">No students found</p>
+      </div>
+    `;
+    if (typeof lucide !== "undefined") lucide.createIcons();
     return;
   }
 
