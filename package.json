@@ -15,5 +15,8 @@
     "jsonwebtoken": "^9.0.2",
     "qrcode": "^1.5.4",
     "tailwindcss": "^4.1.14"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10"
   }
 }
