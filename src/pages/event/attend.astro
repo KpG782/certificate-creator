@@ -22,7 +22,6 @@ try {
   
   if (error instanceof jwt.TokenExpiredError) {
     isExpired = true;
-    // Try to decode expired token to show event name
     try {
       eventData = jwt.decode(token);
     } catch (decodeError) {
@@ -42,144 +41,424 @@ if (isInvalid) {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Event Attendance - {eventData.event_name || 'Unknown Event'}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1e40af">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>{eventData?.event_name || 'Event Attendance'} - UMak CCIS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    
+    body {
+      overscroll-behavior: none;
+      touch-action: manipulation;
+    }
+
+    .safe-area {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .card-shine {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card-shine::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+      transition: left 0.5s;
+    }
+
+    .card-shine:active::before {
+      left: 100%;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-slide-up {
+      animation: slideUp 0.4s ease-out forwards;
+    }
+
+    .btn-press:active {
+      transform: scale(0.97);
+    }
+
+    /* Custom scrollbar for webkit browsers */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
 </head>
-<body class="bg-gradient-to-br from-blue-500 to-purple-600 min-h-screen flex items-center justify-center p-4">
-  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+<body class="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 min-h-screen safe-area overflow-x-hidden">
+  
+  <!-- UMak Header Banner -->
+  <div class="bg-white/95 backdrop-blur-sm shadow-lg sticky top-0 z-50">
+    <div class="max-w-md mx-auto px-4 py-3 flex items-center gap-3">
+      <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center flex-shrink-0">
+        <span class="text-white font-bold text-lg">U</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <h1 class="text-sm font-bold text-gray-900 truncate">University of Makati</h1>
+        <p class="text-xs text-gray-600 truncate">College of Computing and Information Sciences</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="max-w-md mx-auto px-4 py-6 pb-8">
+    
     {isExpired ? (
-      <!-- Expired Event -->
-      <div class="text-center">
-        <div class="w-20 h-20 mx-auto mb-6 bg-red-100 rounded-full flex items-center justify-center">
-          <i data-lucide="clock-x" class="w-10 h-10 text-red-600"></i>
+      <!-- Expired Event Card -->
+      <div class="bg-white rounded-2xl shadow-2xl p-6 animate-slide-up">
+        <div class="text-center">
+          <!-- Icon -->
+          <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-red-100 to-orange-100 rounded-full flex items-center justify-center">
+            <i data-lucide="clock-x" class="w-10 h-10 text-red-600"></i>
+          </div>
+
+          <!-- Title -->
+          <h2 class="text-2xl font-bold text-gray-900 mb-2">
+            Registration Closed
+          </h2>
+
+          <!-- Message -->
+          <p class="text-gray-600 text-base mb-6 leading-relaxed">
+            Unfortunately, the registration period for this event has ended.
+          </p>
+
+          <!-- Event Info -->
+          <div class="bg-gray-50 rounded-xl p-4 mb-6">
+            <p class="text-sm text-gray-700 font-medium mb-1">Event:</p>
+            <p class="text-base font-semibold text-gray-900">{eventData?.event_name}</p>
+          </div>
+
+          <!-- Back Button -->
+          <a 
+            href="/dashboard" 
+            class="inline-flex items-center justify-center gap-2 w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3.5 px-6 rounded-xl transition-all duration-200 btn-press"
+          >
+            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+            Back to Dashboard
+          </a>
         </div>
-        <h1 class="text-2xl font-bold text-gray-800 mb-2">
-          Registration Closed
-        </h1>
-        <p class="text-gray-600 mb-4">
-          This event's registration period has ended.
-        </p>
-        <p class="text-sm text-gray-500">
-          Event: <strong>{eventData.event_name}</strong>
-        </p>
       </div>
     ) : (
-      <!-- Active Event -->
-      <div class="text-center">
-        <div class="w-20 h-20 mx-auto mb-6 bg-blue-100 rounded-full flex items-center justify-center">
-          <i data-lucide="calendar-check" class="w-10 h-10 text-blue-600"></i>
+      <!-- Active Event Card -->
+      <div class="space-y-4 animate-slide-up">
+        
+        <!-- Event Info Card -->
+        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+          
+          <!-- Event Header -->
+          <div class="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 text-white">
+            <div class="flex items-start gap-4">
+              <div class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center flex-shrink-0">
+                <i data-lucide="calendar-check" class="w-8 h-8"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <h2 class="text-xl font-bold mb-1 leading-tight">
+                  {eventData?.event_name}
+                </h2>
+                <p class="text-blue-100 text-sm flex items-center gap-1">
+                  <i data-lucide="shield-check" class="w-4 h-4"></i>
+                  Official UMak Event
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Event Details -->
+          <div class="p-6 space-y-4">
+            
+            <!-- Event ID Badge -->
+            <div class="inline-flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+              <i data-lucide="hash" class="w-4 h-4 text-blue-600"></i>
+              <span class="text-sm font-medium text-blue-900">
+                Event ID: <span class="font-mono">{eventData?.event_id}</span>
+              </span>
+            </div>
+
+            <!-- Timestamp -->
+            {eventData?.iat && (
+              <div class="flex items-center gap-2 text-sm text-gray-600">
+                <i data-lucide="clock" class="w-4 h-4"></i>
+                <span>Created: {new Date(eventData.iat * 1000).toLocaleString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}</span>
+              </div>
+            )}
+
+            <!-- Divider -->
+            <div class="border-t border-gray-200 my-4"></div>
+
+            <!-- Instructions -->
+            <div class="bg-blue-50 rounded-xl p-4 border border-blue-100">
+              <div class="flex items-start gap-3">
+                <i data-lucide="info" class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"></i>
+                <div class="flex-1">
+                  <p class="text-sm font-medium text-blue-900 mb-1">Important:</p>
+                  <p class="text-sm text-blue-800 leading-relaxed">
+                    By marking your attendance, you confirm that you will attend this event. 
+                    Please ensure you can participate before proceeding.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Attendance Button -->
+            <button 
+              id="attendBtn"
+              class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl btn-press card-shine"
+            >
+              <i data-lucide="user-check" class="w-5 h-5"></i>
+              Mark My Attendance
+            </button>
+
+            <!-- Security Note -->
+            <div class="flex items-center justify-center gap-2 text-xs text-gray-500 pt-2">
+              <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+              <span>Secure authentication required</span>
+            </div>
+          </div>
         </div>
 
-        <h1 class="text-2xl font-bold text-gray-800 mb-2">
-          {eventData.event_name}
-        </h1>
+        <!-- Status Message -->
+        <div id="statusMessage" class="hidden"></div>
 
-        <div class="bg-gray-50 rounded-lg p-4 mb-6 text-left">
-          <p class="text-sm text-gray-700 mb-2 flex items-center gap-2">
-            <i data-lucide="calendar" class="w-4 h-4"></i>
-            <strong>Event ID:</strong> {eventData.event_id}
-          </p>
-          {eventData.iat && (
-            <p class="text-xs text-gray-500">
-              Created: {new Date(eventData.iat * 1000).toLocaleString()}
-            </p>
-          )}
+        <!-- Help Card -->
+        <div class="bg-white/90 backdrop-blur-sm rounded-xl p-4 shadow-lg">
+          <div class="flex items-start gap-3">
+            <i data-lucide="help-circle" class="w-5 h-5 text-gray-500 flex-shrink-0 mt-0.5"></i>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-gray-900 mb-1">Need Help?</p>
+              <p class="text-xs text-gray-600 leading-relaxed">
+                If you encounter any issues, please contact the event organizers or visit the CCIS office.
+              </p>
+            </div>
+          </div>
         </div>
 
-        <p class="text-gray-600 mb-6">
-          Click below to mark your attendance
-        </p>
-
-        <button 
-          id="attendBtn"
-          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 flex items-center justify-center shadow-lg"
-        >
-          <i data-lucide="user-check" class="w-5 h-5 mr-2"></i>
-          Mark Attendance
-        </button>
-
-        <p class="text-xs text-gray-500 mt-4 flex items-center justify-center gap-1">
-          <i data-lucide="shield-check" class="w-3 h-3"></i>
-          You'll be asked to log in with your UMak account
-        </p>
-
-        <div id="statusMessage" class="hidden mt-4"></div>
       </div>
     )}
   </div>
 
+  <!-- Footer -->
+  <div class="max-w-md mx-auto px-4 pb-6 text-center">
+    <p class="text-xs text-white/70">
+      © 2025 University of Makati - CCIS
+    </p>
+  </div>
+
   <script define:vars={{ eventData, token, isExpired }}>
+    // Initialize Lucide icons
     if (typeof lucide !== 'undefined') {
       lucide.createIcons();
     }
 
     if (!isExpired) {
-      document.getElementById('attendBtn')?.addEventListener('click', async () => {
-        const btn = document.getElementById('attendBtn');
-        const statusMsg = document.getElementById('statusMessage');
-        
-        if (!btn || !statusMsg) return;
+      const attendBtn = document.getElementById('attendBtn');
+      const statusContainer = document.getElementById('statusMessage');
 
-        btn.disabled = true;
-        btn.innerHTML = '<i data-lucide="loader" class="w-5 h-5 mr-2 animate-spin"></i>Processing...';
-        lucide.createIcons();
+      attendBtn?.addEventListener('click', async () => {
+        if (!attendBtn || !statusContainer) return;
+
+        // Haptic feedback (if supported)
+        if (navigator.vibrate) {
+          navigator.vibrate(50);
+        }
+
+        // Disable button
+        attendBtn.disabled = true;
+        attendBtn.innerHTML = `
+          <svg class="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span>Processing...</span>
+        `;
 
         try {
+          // Simulate API delay
+          await new Promise(resolve => setTimeout(resolve, 800));
+
           const attendanceKey = `attendance_${eventData.event_id}`;
           const existingAttendance = localStorage.getItem(attendanceKey);
           
           if (existingAttendance) {
-            statusMsg.className = 'mt-4 bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg text-sm';
-            statusMsg.innerHTML = `
-              <div class="flex items-center gap-2">
-                <i data-lucide="alert-circle" class="w-4 h-4"></i>
-                <span>You've already marked attendance for this event!</span>
+            // Already marked
+            statusContainer.className = 'bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4 shadow-lg animate-slide-up';
+            statusContainer.innerHTML = `
+              <div class="flex items-start gap-3">
+                <i data-lucide="alert-circle" class="w-6 h-6 text-yellow-600 flex-shrink-0"></i>
+                <div class="flex-1">
+                  <p class="font-semibold text-yellow-900 mb-1">Already Registered</p>
+                  <p class="text-sm text-yellow-800 mb-2">
+                    You've already marked your attendance for this event.
+                  </p>
+                  <p class="text-xs text-yellow-700">
+                    Registered: ${new Date(existingAttendance).toLocaleString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
               </div>
-              <p class="text-xs mt-1">Marked at: ${new Date(existingAttendance).toLocaleString()}</p>
             `;
-            statusMsg.classList.remove('hidden');
+            statusContainer.classList.remove('hidden');
+            
+            // Update button
+            attendBtn.innerHTML = `
+              <i data-lucide="check-circle" class="w-5 h-5"></i>
+              <span>Already Registered</span>
+            `;
+            attendBtn.className = attendBtn.className.replace('from-blue-600 to-indigo-600', 'bg-yellow-500');
+            
           } else {
+            // Mark attendance
             const timestamp = new Date().toISOString();
             localStorage.setItem(attendanceKey, timestamp);
             
-            statusMsg.className = 'mt-4 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg text-sm';
-            statusMsg.innerHTML = `
-              <div class="flex items-center gap-2">
-                <i data-lucide="check-circle" class="w-4 h-4"></i>
-                <span><strong>Attendance Marked Successfully!</strong></span>
-              </div>
-              <p class="text-xs mt-2">Next steps:</p>
-              <ol class="text-xs list-decimal list-inside mt-1 space-y-1">
-                <li>Attend the full event</li>
-                <li>Complete the evaluation form (sent after event)</li>
-                <li>Receive your certificate via email</li>
-              </ol>
-            `;
-            statusMsg.classList.remove('hidden');
-          }
+            // Success feedback
+            if (navigator.vibrate) {
+              navigator.vibrate([50, 100, 50]);
+            }
 
-          btn.innerHTML = '<i data-lucide="check" class="w-5 h-5 mr-2"></i>Checked In';
-          btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-          btn.classList.add('bg-green-600');
+            statusContainer.className = 'bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl p-5 shadow-xl animate-slide-up';
+            statusContainer.innerHTML = `
+              <div class="text-center">
+                <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <i data-lucide="check" class="w-8 h-8 text-white"></i>
+                </div>
+                <h3 class="text-lg font-bold text-green-900 mb-2">
+                  Attendance Confirmed! 🎉
+                </h3>
+                <p class="text-sm text-green-800 mb-4">
+                  You're all set for this event.
+                </p>
+                
+                <div class="bg-white rounded-lg p-4 text-left space-y-3 mb-4">
+                  <p class="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <i data-lucide="list-checks" class="w-4 h-4 text-green-600"></i>
+                    Next Steps:
+                  </p>
+                  <ol class="text-sm text-gray-700 space-y-2 pl-6">
+                    <li class="flex items-start gap-2">
+                      <span class="text-green-600 font-bold">1.</span>
+                      <span>Attend the event at the scheduled time</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="text-green-600 font-bold">2.</span>
+                      <span>Participate actively throughout the session</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="text-green-600 font-bold">3.</span>
+                      <span>Complete the post-event evaluation form</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="text-green-600 font-bold">4.</span>
+                      <span>Receive your certificate via email</span>
+                    </li>
+                  </ol>
+                </div>
+
+                <div class="text-xs text-green-700 bg-green-100 rounded-lg p-3">
+                  <i data-lucide="info" class="w-3.5 h-3.5 inline mr-1"></i>
+                  A confirmation will be sent to your UMak email
+                </div>
+              </div>
+            `;
+            statusContainer.classList.remove('hidden');
+            
+            // Update button
+            attendBtn.innerHTML = `
+              <i data-lucide="check-circle" class="w-5 h-5"></i>
+              <span>Attendance Marked</span>
+            `;
+            attendBtn.className = attendBtn.className.replace('from-blue-600 to-indigo-600', 'from-green-600 to-emerald-600');
+            
+            // Scroll to status message
+            setTimeout(() => {
+              statusContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+          }
           
         } catch (error) {
           console.error('Attendance marking failed:', error);
-          statusMsg.className = 'mt-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm';
-          statusMsg.innerHTML = `
-            <div class="flex items-center gap-2">
-              <i data-lucide="x-circle" class="w-4 h-4"></i>
-              <span>Failed to mark attendance. Please try again.</span>
+          
+          statusContainer.className = 'bg-red-50 border-2 border-red-300 rounded-xl p-4 shadow-lg animate-slide-up';
+          statusContainer.innerHTML = `
+            <div class="flex items-start gap-3">
+              <i data-lucide="x-circle" class="w-6 h-6 text-red-600 flex-shrink-0"></i>
+              <div class="flex-1">
+                <p class="font-semibold text-red-900 mb-1">Something Went Wrong</p>
+                <p class="text-sm text-red-800 mb-3">
+                  We couldn't process your attendance. Please try again.
+                </p>
+                <button 
+                  onclick="location.reload()" 
+                  class="text-sm font-medium text-red-700 underline"
+                >
+                  Refresh Page
+                </button>
+              </div>
             </div>
           `;
-          statusMsg.classList.remove('hidden');
+          statusContainer.classList.remove('hidden');
           
-          btn.disabled = false;
-          btn.innerHTML = '<i data-lucide="user-check" class="w-5 h-5 mr-2"></i>Mark Attendance';
+          // Reset button
+          attendBtn.disabled = false;
+          attendBtn.innerHTML = `
+            <i data-lucide="user-check" class="w-5 h-5"></i>
+            <span>Try Again</span>
+          `;
         }
 
-        lucide.createIcons();
+        // Reinitialize Lucide icons
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
+        }
       });
     }
   </script>
