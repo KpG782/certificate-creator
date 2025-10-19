@@ -1,68 +1,176 @@
-# Certificate Generator (Astro)
+# Certificate Generator (Astro + n8n)
 
-Small web app to create single or batch certificates (University of Makati styling).
+Professional certificate generator for University of Makati with automated email delivery via n8n workflow automation.
 
 ## Features
 
-- Single mode: live certificate preview (smaller, on top) + form to edit participant details and download a PNG.
-- Batch mode: upload a JSON file of participants, preview a table (includes name, email, category, seminar, date), apply e-signatures to all, and generate a ZIP of PNG certificates.
-- Client-side image generation using html-to-image and packaging with JSZip.
-- Modular scripts: `shared.js` (utilities) + `main.js` (app logic).
+- **Single mode**: Live certificate preview + form to edit participant details and download/send certificate
+- **Batch mode**: Upload JSON or fetch from Google Sheets, preview table, and send certificates to multiple recipients
+- **Student Management**: View, filter, and manage certificates with Google Sheets integration
+- **Automated Email Delivery**: Certificates sent via n8n webhook with Gmail integration
+- **Real-time Status Tracking**: Google Apps Script updates certificate send status automatically
+- **Client-side image generation**: JPEG compression for optimal email delivery (~160KB per certificate)
 
-## Quick start
+## Tech Stack
 
-1. Install dependencies
+- **Frontend**: Astro, Tailwind CSS, Lucide Icons
+- **Image Generation**: html-to-image (JPEG, pixelRatio: 1.5)
+- **Automation**: n8n workflow (webhook → Gmail API)
+- **Data Source**: Google Sheets (public CSV/JSON)
+- **Status Updates**: Google Apps Script (doPost endpoint)
+- **Packaging**: JSZip for batch downloads
+
+## Quick Start
+
+1. **Install dependencies**
+
    ```sh
    npm install
    ```
-2. Run dev server
+
+2. **Configure environment** (optional)
+
+   - n8n webhook URL: `https://n8n.kenbuilds.tech/webhook/certificate-email`
+   - Google Apps Script URL: Update in `main.js` line 888
+   - Google Sheets ID: Update in `sheets.js`
+
+3. **Run dev server**
+
    ```sh
    npm run dev
    ```
-3. Open the app in the browser (default Astro port printed by CLI).
 
-## Project structure (important files)
+4. **Build for production**
+   ```sh
+   npm run build
+   npm run preview
+   ```
+
+## Project Structure
 
 ```
 src/
 ├── components/
-│   ├── Welcome.astro        ← App container (mode tabs)
-│   ├── SingleMode.astro     ← Live preview + form + uploads + download
-│   ├── BatchPanel.astro     ← JSON upload, participants table, batch controls
-│   ├── CertificateCard.astro← Certificate DOM used for preview and export
-│   ├── ParticipantForm.astro← Input fields (name, email, category, seminar, date, location, dean, organizer)
-│   └── SignatureUploader.astro
+│   ├── SingleMode.astro           ← Single certificate form + preview
+│   ├── BatchMode.astro            ← Batch processing UI
+│   ├── StudentManagement.astro    ← Google Sheets integration
+│   ├── CertificateCard.astro      ← Certificate template (1122x794px)
+│   ├── ParticipantForm.astro      ← Input fields
+│   └── SignatureUploader.astro    ← E-signature uploads
 ├── scripts/
-│   ├── shared.js            ← Utility functions (updateCertificatePreview, loadImage, validation, sample JSON, table renderer)
-│   └── main.js              ← App wiring (imports shared.js, handles UI, batch generation)
-├── styles/
-└── pages/
+│   ├── main.js                    ← Core logic (certificate generation, email sending)
+│   └── sheets.js                  ← Google Sheets data fetching
+├── pages/
+│   ├── index.astro                ← Landing/login page
+│   └── dashboard.astro            ← Main app (tabs: Single, Batch, Student Management)
+└── styles/
+    └── global.css                 ← Tailwind + custom styles
 ```
 
-## Where to put scripts
+## n8n Workflow Integration
 
-- Place shared utilities in:
-  `src/scripts/shared.js`
-- Place main application logic in:
-  `src/scripts/main.js`
-- `Welcome.astro` loads `main.js` in the page (keep script path `/src/scripts/main.js` as used in the project).
+### **Email Sending Endpoint**
 
-## Participant fields (single + batch)
+```
+POST https://n8n.kenbuilds.tech/webhook/certificate-email
+Content-Type: application/json
 
-Each participant must include:
+{
+  "participantName": "Ken Garcia",
+  "participantEmail": "kgarcia@umak.edu.ph",
+  "category": "Student",
+  "seminarTitle": "Mobile App Security",
+  "eventDate": "Date(2025,9,15)",
+  "location": "HPSB 1012",
+  "organizerName": "Dr. Cecille E. Tadeo, Ph. D.",
+  "deanName": "Dr. Joel B. Mangaba, DIT",
+  "certificateBase64": "base64EncodedJPEG..."
+}
+```
 
-- name (string)
-- email (UMak format recommended e.g. kgarcia.a62240916@umak.edu.ph)
-- category (e.g. Student, Faculty, Staff)
-- seminarTitle
-- eventDate
-- location
-- deanName
-- organizerName
+### **n8n Workflow Steps**
 
-## Sample JSON template
+1. Webhook trigger receives certificate data
+2. Decode base64 image to binary
+3. Gmail node sends email with certificate attached
+4. Response confirms delivery
 
-Save this as `sample_participants.json` or download from the app.
+### **Performance**
+
+- Image generation: ~1.2s
+- Email send (first): ~13s (cold start)
+- Email send (subsequent): ~7.5s
+- Total per certificate: ~8-10s average
+
+## Google Sheets Integration
+
+### **Sheet Structure**
+
+| Column        | Description                            |
+| ------------- | -------------------------------------- |
+| id            | Unique identifier                      |
+| name          | Student name                           |
+| email         | UMak email (e.g., student@umak.edu.ph) |
+| section       | Class section                          |
+| category      | Student/Faculty/Staff                  |
+| seminarTitle  | Event title                            |
+| eventDate     | Event date                             |
+| location      | Venue                                  |
+| deanName      | Dean signature name                    |
+| organizerName | Organizer signature name               |
+| **status**    | pending/sent                           |
+| **sentDate**  | Timestamp when sent                    |
+
+### **Google Apps Script (Status Updates)**
+
+```javascript
+function doPost(e) {
+  // Receives: { email: "student@umak.edu.ph" }
+  // Updates: status → "sent", sentDate → timestamp
+  // Returns: { success: true, message: "Status updated" }
+}
+```
+
+Endpoint: `https://script.google.com/macros/s/.../exec`
+
+## Certificate Fields
+
+Each participant requires:
+
+- `name` (string)
+- `email` (UMak format: `username@umak.edu.ph`)
+- `category` (Student/Faculty/Staff)
+- `seminarTitle` (event name)
+- `eventDate` (formatted date)
+- `location` (venue)
+- `deanName` (Dean signature)
+- `organizerName` (Organizer signature)
+
+## Usage Modes
+
+### **1. Single Certificate**
+
+- Fill form with participant details
+- Upload signatures (Dean + Organizer)
+- Preview live updates
+- Download PNG or Send Email
+
+### **2. Batch Mode**
+
+- Upload JSON file or fetch from Google Sheets
+- Upload signatures (applied to all)
+- Preview participants table
+- Generate ZIP or Send to Selected/All
+
+### **3. Student Management**
+
+- View all students from Google Sheets
+- Filter by email, year, section, status
+- Send certificates individually
+- Bulk send to selected students
+- Real-time status updates
+
+## Sample JSON
 
 ```json
 {
@@ -71,57 +179,79 @@ Save this as `sample_participants.json` or download from the app.
       "name": "Maria Santos",
       "email": "msantos.a62240916@umak.edu.ph",
       "category": "Student",
-      "seminarTitle": "Cybersecurity Fundamentals for Modern Organizations",
+      "seminarTitle": "Cybersecurity Fundamentals",
       "eventDate": "October 15, 2025",
-      "location": "HPSB 1012, University of Makati, Taguig City",
-      "deanName": "Prof. Levi B. Mangaba, DT",
-      "organizerName": "Prof. Cecille E. Tadeo, Ph. D."
+      "location": "HPSB 1012",
+      "deanName": "Dr. Joel B. Mangaba, DIT",
+      "organizerName": "Dr. Cecille E. Tadeo, Ph. D."
     }
   ]
 }
 ```
 
-## How to use
+## Performance Optimizations
 
-Single mode
+- **JPEG compression** (quality: 0.92) → 50% smaller files vs PNG
+- **Cached signatures** → No reload after first certificate
+- **Parallel execution** → Email send + Sheet update run simultaneously
+- **PixelRatio: 1.5** → Balance of quality (1683x1191px) and speed
 
-- Click "Single Certificate".
-- Edit fields in the form (live preview updates the certificate).
-- Upload left/right logos and two e-signature images (Dean, Organizer). Signatures apply to the preview and exported image.
-- Click "Download Certificate" to export the visible certificate as PNG.
+## Key Files to Configure
 
-Batch mode
+1. **main.js**
 
-- Click "Batch Mode".
-- Upload a JSON file matching the sample structure.
-- The participants table shows Name, Email, Category, Seminar and Date.
-- Optionally upload `Dean` / `Organizer` signature images to apply to all certificates.
-- Click "Generate All Certificates" to produce PNGs and download a ZIP file.
+   - Line 888: Apps Script URL
+   - Line 860: n8n webhook URL
 
-Notes
+2. **sheets.js**
 
-- The app uses `html-to-image` to render the certificate DOM to PNG and `JSZip` to bundle files.
-- `shared.js` exposes helpers:
-  - updateCertificatePreview(participant)
-  - loadImage(file) → Promise<DataURL>
-  - createSampleJSON()
-  - validateParticipant(part)
-  - validateEmail(email)
-  - displayParticipantsTable(participants, containerId)
-- `main.js` imports and uses those helpers for live preview, uploads, validation and batch generation.
+   - Line 1: Google Sheets ID
+   - Line 5: Published CSV URL
 
-Troubleshooting
+3. **Google Apps Script**
+   - Deploy as Web App
+   - Execute as: Me
+   - Who has access: Anyone
 
-- If batch table does not show email/category, confirm your JSON includes `email` and `category` fields and follow the sample structure.
-- If signatures do not appear in the exported image, ensure you uploaded PNG/SVG/JPEG, then regenerate (file reader loads images as data URLs).
+## Troubleshooting
 
-License / Credits
+**Students not loading:**
 
-- Icons and fonts loaded via CDN (Tailwind, Google Fonts).
-- Built with Astro starter.
+- Check Google Sheets is published (File → Share → Publish to web)
+- Verify sheet structure matches expected columns
+- Check browser console for CORS errors
 
-If you want, I can:
+**Email not sending:**
 
-- Add a validated email pattern description,
-- Convert `shared.js` to TypeScript,
-- Provide a small UI tweak to show validation errors inline.
+- Verify n8n workflow is active
+- Check webhook URL is correct
+- Ensure Gmail API is connected in n8n
+- Check certificate image size < 10MB
+
+**Status not updating:**
+
+- Verify Apps Script URL is correct
+- Check Apps Script is deployed as Web App
+- Ensure `mode: 'no-cors'` is set in fetch
+
+**CORS errors:**
+
+- Use `mode: 'no-cors'` for Apps Script calls
+- Ensure CDNs are from trusted sources
+- Check Vercel deployment settings
+
+## Development Tips
+
+- Use browser DevTools → Network tab to debug requests
+- Check console logs for performance metrics
+- Test with 1-2 students before bulk sending
+- Keep signatures < 1MB for faster loading
+
+## License
+
+Built for University of Makati - College of Computing and Information Sciences (CCIS)
+
+---
+
+**AI Context Summary:**
+This is an Astro-based certificate generator that uses n8n for email automation and Google Sheets for data management. Main flow: User fills form → Certificate generated as JPEG → Sent via n8n webhook → Gmail delivers → Google Apps Script updates status. Key performance: ~1.2s image gen, ~8s total per certificate. Three modes: Single, Batch, Student Management.

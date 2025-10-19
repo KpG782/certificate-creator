@@ -1,0 +1,72 @@
+---
+// src/pages/event/attend.astro
+const token = Astro.url.searchParams.get('token');
+
+if (!token) {
+  return Astro.redirect('/dashboard');
+}
+
+// Decode token (basic decode for now)
+let eventData;
+try {
+  eventData = JSON.parse(atob(token));
+} catch {
+  return Astro.redirect('/dashboard?error=invalid_token');
+}
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Attendance - {eventData.event_name}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-500 to-purple-600 min-h-screen flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+    <div class="text-center">
+      <!-- Event Icon -->
+      <div class="w-20 h-20 mx-auto mb-6 bg-blue-100 rounded-full flex items-center justify-center">
+        <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+      </div>
+
+      <h1 class="text-2xl font-bold text-gray-800 mb-2">
+        {eventData.event_name}
+      </h1>
+
+      <p class="text-gray-600 mb-6">
+        Click below to mark your attendance
+      </p>
+
+      <!-- Login/Attendance Button -->
+      <button 
+        id="attendBtn"
+        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 flex items-center justify-center"
+      >
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        Mark Attendance
+      </button>
+
+      <p class="text-xs text-gray-500 mt-4">
+        You'll be asked to log in with your UMak account
+      </p>
+    </div>
+  </div>
+
+  <script define:vars={{ eventData, token }}>
+    document.getElementById('attendBtn').addEventListener('click', () => {
+      // For now, just show an alert
+      // In next steps, we'll add OAuth login
+      alert(`Event ID: ${eventData.event_id}\n\nNext step: We'll add OAuth login here!`);
+      
+      // TODO: Redirect to OAuth login
+      // window.location.href = `/auth/login?redirect=/event/attend?token=${token}`;
+    });
+  </script>
+</body>
+</html>
