@@ -234,9 +234,16 @@ import "../styles/global.css";
     </footer>
   </div>
 
-  <script type="module" >
-   // Import the modules - Astro will bundle these correctly
-    import '/src/scripts/main.js';
+ <!-- ✅ Load main.js with absolute path -->
+  <script>
+    // Load as a module dynamically
+    import('../scripts/main.js')
+      .then(() => {
+        console.log('✅ main.js loaded!');
+      })
+      .catch(err => {
+        console.error('❌ Failed to load main.js:', err);
+      });
   </script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
