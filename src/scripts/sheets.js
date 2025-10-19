@@ -5,7 +5,11 @@ const SHEET_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vTGfW1Fc4tyVzWUftXDPJ3RYiDuAwV_2xdunWFhIp0lIS6_ibAwEFXQXr320WKZSyi80FLyOLOjxzvl/pub?output=csv";
 
 // ✅ Method 2: Fallback to JSON API
-const SHEET_JSON_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out=json`;
+const SHEET_JSON_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+
+// ✅ Method 3: Apps Script Web App (for status updates)
+const APPS_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbzkcDReypApdx_Ls245VGE57VK5binTa8cJhHB2w0HiJCDndX1JuTSBAPmgK8slgTRdag/exec";
 
 /**
  * Fetch students from Google Sheets with multiple fallback methods
@@ -311,3 +315,6 @@ export const displayStudentsTable = (students, containerId) => {
 
   console.log(`✅ Displayed ${students.length} students`);
 };
+
+// ✅ Export the Apps Script URL for use in main.js
+export { APPS_SCRIPT_URL };

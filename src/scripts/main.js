@@ -11,6 +11,7 @@ import {
   fetchStudents,
   filterStudents,
   displayStudentsTable as displayStudentsTableFromSheets,
+  APPS_SCRIPT_URL, // ✅ Add this import
 } from "./sheets.js";
 
 let deanSignatureData = null;
@@ -755,7 +756,6 @@ function setupStudentManagement() {
 // ⚡ Pre-cache signature images (add at top of file, after variable declarations)
 let cachedDeanImage = null;
 let cachedOrganizerImage = null;
-
 async function sendCertificateToStudent(student, buttonElement) {
   let originalHTML = "";
   if (buttonElement) {
@@ -817,21 +817,20 @@ async function sendCertificateToStudent(student, buttonElement) {
       organizerPreview.appendChild(cachedOrganizerImage.cloneNode(true));
     }
 
-    // ⚡ Small delay for DOM to settle (reduced from 100ms)
+    // ⚡ Small delay for DOM to settle
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     console.log("📸 Generating certificate image...");
     const imageStartTime = performance.now();
 
-    // ✅ OPTIMIZED: High quality for email, but compressed
+    // ✅ OPTIMIZED: High quality JPEG
     const dataUrl = await htmlToImage.toJpeg(card, {
-      // ✅ JPEG instead of PNG (50% smaller, same visual quality)
-      pixelRatio: 1.5, // ✅ Good quality: 1683x1191px @ 96 DPI
-      cacheBust: false, // ✅ Faster rendering
+      pixelRatio: 1.5,
+      cacheBust: false,
       backgroundColor: "#ffffff",
-      skipFonts: false, // ✅ Ensure fonts render properly
-      quality: 0.92, // ✅ High JPEG quality (0.92 is sweet spot)
-      canvasWidth: 1122, // ✅ Explicit dimensions
+      skipFonts: false,
+      quality: 0.92,
+      canvasWidth: 1122,
       canvasHeight: 794,
     });
 
@@ -870,8 +869,7 @@ async function sendCertificateToStudent(student, buttonElement) {
     console.log(`📧 Sending email to ${payload.participantEmail}...`);
     const emailStartTime = performance.now();
 
-    const APPS_SCRIPT_URL =
-      "https://script.google.com/macros/s/AKfycbzkcDReypApdx_Ls245VGE57VK5binTa8cJhHB2w0HiJCDndX1JuTSBAPmgK8slgTRdag/exec";
+    // ✅ Use imported APPS_SCRIPT_URL (no hardcoded URL here)
 
     // ⚡ Run email send and sheet update in parallel
     const [emailResponse, sheetResponse] = await Promise.all([
@@ -920,7 +918,7 @@ async function sendCertificateToStudent(student, buttonElement) {
 
     console.log(`✅ Certificate sent to ${payload.participantEmail}`);
 
-    // Sheet update is non-blocking (we already sent the request)
+    // Sheet update is non-blocking
     if (sheetResponse.ok) {
       console.log("✅ Status update request sent to Google Sheets");
     } else {
