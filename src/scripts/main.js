@@ -60,7 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   studentTab?.addEventListener("click", () => {
-    console.log("Student tab clicked");
+    console.log("Student tab clicked"); // ✅ Check if this logs
     studentTab.className =
       "px-8 py-4 rounded-xl font-semibold text-lg transition-all bg-blue-600 text-white shadow-lg";
     singleTab.className =
@@ -71,8 +71,16 @@ document.addEventListener("DOMContentLoaded", () => {
     singleContent?.classList.add("hidden");
     batchContent?.classList.add("hidden");
 
+    // ✅ THIS IS CRITICAL - Make sure this is here
+    console.log(
+      "🔍 Checking if loadStudents exists:",
+      typeof window.loadStudents
+    );
     if (typeof window.loadStudents === "function") {
+      console.log("✅ Calling loadStudents()");
       window.loadStudents();
+    } else {
+      console.error("❌ loadStudents function not defined yet!");
     }
   });
 
@@ -492,6 +500,7 @@ function setupBatchMode() {
 
 function setupStudentManagement() {
   // Add this inside setupStudentManagement()
+  console.log("🔧 setupStudentManagement() called");
 
   // Bulk send button
   const bulkSendBtn = document.getElementById("bulk-send-btn");
@@ -552,8 +561,9 @@ function setupStudentManagement() {
   let selectedStudents = new Set();
 
   window.loadStudents = async function () {
-    console.log("Loading students...");
+    console.log("🔄 loadStudents() called"); // ✅ Add this
     const container = document.getElementById("students-table-container");
+    console.log("📦 Container found:", !!container); // ✅ Add this
 
     if (container) {
       container.innerHTML =
@@ -561,18 +571,22 @@ function setupStudentManagement() {
     }
 
     try {
+      console.log("📡 Fetching students..."); // ✅ Add this
       allStudents = await fetchStudents();
-      console.log("Students loaded:", allStudents.length);
+      console.log("✅ Students loaded:", allStudents.length); // ✅ Add this
       selectedStudents.clear();
       updateBulkActionsBar();
       applyFiltersAndDisplay();
     } catch (error) {
-      console.error("Error loading students:", error);
+      console.error("❌ Error loading students:", error);
       if (container) {
         container.innerHTML = `
           <div class="text-center py-8">
             <p class="text-red-500 font-semibold mb-2">⚠️ Error loading students</p>
             <p class="text-sm text-gray-600 mb-4">Error: ${error.message}</p>
+            <button onclick="window.loadStudents()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              Try Again
+            </button>
           </div>
         `;
       }
